@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Đếm ngược thời gian</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏳</text></svg>">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg: #0b0f16;
+    --card: #121b2b;
+    --card-2: #0d1421;
+    --line: #22304a;
+    --txt: #e8eefc;
+    --muted: #8ea0bf;
+    --accent: #4fd1c5;
+    --accent-2: #7c5cff;
+    --danger: #ff5d73;
+  }
+
+  html, body { margin: 0; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--txt);
+    background:
+      radial-gradient(1100px 560px at 18% -12%, #17233a 0%, transparent 62%),
+      radial-gradient(900px 500px at 108% 8%, #1b1740 0%, transparent 55%),
+      var(--bg);
+    min-height: 100vh;
+    padding: 26px 16px 70px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+
+  h1 { margin: 0; font-size: clamp(21px, 3vw, 29px); letter-spacing: -0.02em; }
+
+  .sub { margin: 7px 0 0; color: var(--muted); font-size: 13.5px; }
+
+  .head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+  .lang {
+    display: inline-flex; gap: 3px; padding: 3px;
+    background: #0d1421; border: 1px solid var(--line); border-radius: 10px;
+  }
+
+  .lang button {
+    background: transparent; border: 0; color: var(--muted);
+    padding: 6px 13px; border-radius: 8px;
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .lang button:hover { color: var(--txt); }
+  .lang button.active { background: #1d2c4a; color: var(--accent); }
+
+  .clock { text-align: right; font-variant-numeric: tabular-nums; }
+  .clock b { display: block; font-size: clamp(22px, 4vw, 28px); letter-spacing: 0.06em; }
+  .clock span { color: var(--muted); font-size: 12.5px; }
+
+  .clock .tz {
+    display: inline-block; margin-top: 7px; padding: 3px 10px;
+    border-radius: 999px; background: #0d1421; border: 1px solid var(--line);
+    color: var(--muted); font-size: 11px; letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, #141d2e, #101725);
+    border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px; display: grid; gap: 14px;
+    box-shadow: 0 20px 50px -32px #000;
+  }
+
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+
+  .field { display: grid; gap: 6px; min-width: 0; }
+
+  label {
+    font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+
+  input, select, button { font: inherit; color: inherit; }
+
+  input[type="text"], input[type="number"], input[type="datetime-local"], select {
+    width: 100%; background: var(--card-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px; min-height: 44px; color: var(--txt);
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.16); }
+
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .chip {
+    background: #16223a; border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 14px; font-size: 13px; color: var(--txt); cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .chip:hover { background: #1d2c4a; border-color: #33456b; }
+
+  .btn {
+    border: 0; border-radius: 11px; padding: 13px 20px; min-height: 46px;
+    font-weight: 650; cursor: pointer; color: #06111c;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    transition: filter 0.15s, transform 0.06s;
+  }
+
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(1px); }
+
+  .btn.ghost {
+    background: #16223a; border: 1px solid var(--line); color: var(--txt);
+    font-weight: 550; padding: 10px 16px; min-height: 40px;
+  }
+
+  .btn.ghost:hover { background: #1d2c4a; }
+
+  .btn.small { padding: 8px 14px; min-height: 36px; font-size: 13px; }
+
+  .err { margin: 0; min-height: 18px; font-size: 13px; color: var(--danger); }
+  .err.ok { color: var(--accent); }
+
+  .edit-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: rgba(124,92,255,0.12); border: 1px solid #3d3570;
+    border-radius: 11px; padding: 9px 14px; font-size: 13px;
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+
+  .card {
+    background: linear-gradient(180deg, var(--card), #0f1725);
+    border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 18px 44px -34px #000;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+
+  .card h3 { margin: 0; font-size: 16.5px; line-height: 1.3; overflow-wrap: anywhere; letter-spacing: -0.01em; }
+
+  .card-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+
+  .icon {
+    flex: 0 0 auto; background: #1a1220; border: 1px solid #3a2330; color: #ff8b9b;
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer;
+    display: grid; place-items: center; font-size: 13px; line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .icon:hover { background: #2a1620; }
+  .icon.edit { background: #101a2c; border-color: #24374f; color: #8ea0bf; }
+  .icon.edit:hover { background: #17243a; color: var(--accent); }
+
+  .meta { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .digits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 13px 0 11px; }
+
+  .digits > div {
+    background: var(--card-2); border: 1px solid var(--line);
+    border-radius: 11px; padding: 9px 3px; text-align: center;
+  }
+
+  .digits b {
+    display: block; font-size: clamp(19px, 4.4vw, 29px);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.01em; color: #fff; line-height: 1.15;
+  }
+
+  .digits span {
+    display: block; margin-top: 2px; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  }
+
+  .bar { height: 6px; border-radius: 999px; background: #0a111c; border: 1px solid #1a2438; overflow: hidden; }
+
+  .bar i {
+    display: block; height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.35s linear;
+  }
+
+  .foot {
+    display: flex; justify-content: space-between; gap: 10px; margin-top: 9px;
+    font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+
+  .card.done { border-color: #45233a; }
+  .card.done .digits b { color: var(--danger); }
+  .card.done .bar i { background: var(--danger); width: 100% !important; }
+  .card.done .note { color: var(--danger); }
+
+  .card.soon { border-color: #2c6b63; box-shadow: 0 0 0 1px rgba(79,209,197,0.14), 0 18px 44px -34px #000; }
+
+  .empty {
+    margin: 4px 0 0; padding: 26px 18px; text-align: center; color: var(--muted);
+    border: 1px dashed #26344f; border-radius: 14px; font-size: 14px;
+  }
+
+  .tz-note { margin: -6px 0 0; text-align: center; color: var(--muted); font-size: 12px; opacity: 0.85; }
+
+  footer { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-top: 4px; }
+
+  .file-btn { position: relative; overflow: hidden; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .muted { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+
+  @media (max-width: 560px) {
+    .head-right { align-items: flex-start; }
+    .clock { text-align: left; }
+    .digits > div { padding: 8px 2px; }
+    .muted { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1 data-i18n="app.title">Đếm ngược thời gian</h1>
+      <p class="sub" data-i18n="app.sub">Nhiều mốc cùng lúc · lưu trên máy bạn</p>
+    </div>
+    <div class="head-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="vi">VI</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <div class="clock">
+        <b id="clock-time">--:--:--</b>
+        <span id="clock-date">—</span>
+        <span class="tz" id="clock-tz">—</span>
+      </div>
+    </div>
+  </header>
+
+  <form id="form" class="panel" autocomplete="off">
+    <div class="edit-banner" id="edit-banner" hidden>
+      <span data-i18n="edit.editing">Đang sửa mốc</span>
+      <button class="btn ghost small" type="button" id="btn-cancel-edit" data-i18n="edit.cancel">Bỏ sửa</button>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label for="name" data-i18n="form.name">Tên mốc</label>
+        <input id="name" type="text" maxlength="80" data-i18n-ph="form.namePh" placeholder="Ví dụ: 72h từ 4:44 17/11">
+      </div>
+
+      <div class="field">
+        <label for="mode" data-i18n="form.mode">Cách tính</label>
+        <select id="mode">
+          <option value="duration" selected data-i18n="form.modeDuration">Số giờ từ mốc bắt đầu</option>
+          <option value="end" data-i18n="form.modeEnd">Thời điểm kết thúc cụ thể</option>
+        </select>
+      </div>
+
+      <div class="field" id="field-start">
+        <label for="start" id="lbl-start">Mốc bắt đầu</label>
+        <input id="start" type="datetime-local">
+      </div>
+
+      <div class="field" id="field-hours">
+        <label for="hours" data-i18n="form.hours">Số giờ</label>
+        <input id="hours" type="number" value="72" min="0.01" step="0.01" inputmode="decimal">
+      </div>
+
+      <div class="field" id="field-end" hidden>
+        <label for="end" id="lbl-end">Kết thúc lúc</label>
+        <input id="end" type="datetime-local">
+      </div>
+    </div>
+
+    <div class="chips" id="chips">
+      <button class="chip" type="button" data-hours="24" data-i18n="chip.24">+24 giờ từ bây giờ</button>
+      <button class="chip" type="button" data-hours="48" data-i18n="chip.48">+48 giờ</button>
+      <button class="chip" type="button" data-hours="72" data-i18n="chip.72">+72 giờ</button>
+      <button class="chip" type="button" data-hours="168" data-i18n="chip.168">+7 ngày</button>
+    </div>
+
+    <button class="btn" type="submit" id="btn-submit" data-i18n="form.submit">Thêm bộ đếm</button>
+    <p class="err" id="err" role="status" aria-live="polite"></p>
+  </form>
+
+  <section class="grid" id="list" aria-live="polite"></section>
+  <p class="empty" id="empty" data-i18n="empty">Chưa có bộ đếm nào. Thêm cái đầu tiên đi.</p>
+  <p class="tz-note" data-i18n="hint.tz">Giờ và ngày tính theo thiết bị của bạn — mở bằng máy nào thì theo múi giờ máy đó.</p>
+
+  <footer>
+    <button class="btn ghost" type="button" id="btn-export" data-i18n="io.export">Xuất dữ liệu</button>
+    <span class="btn ghost file-btn">
+      <span data-i18n="io.import">Nhập dữ liệu</span>
+      <input type="file" id="file-import" accept="application/json,.json">
+    </span>
+    <span class="muted" id="save-state" data-i18n="state.default">Dữ liệu nằm trên máy này, không nằm trên mạng</span>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "dem-nguoc:v1";
+  var LEGACY_DRAFT = "dem-nguoc:draft";
+  var LANG_KEY = "dem-nguoc:lang";
+  var TICK_MS = 250;
+
+  var I18N = {
+    vi: {
+      "app.title": "Đếm ngược thời gian",
+      "app.sub": "Nhiều mốc cùng lúc · lưu trên máy bạn",
+      "form.name": "Tên mốc",
+      "form.namePh": "Ví dụ: 72h từ 4:44 17/11",
+      "form.mode": "Cách tính",
+      "form.modeDuration": "Số giờ từ mốc bắt đầu",
+      "form.modeEnd": "Thời điểm kết thúc cụ thể",
+      "form.start": "Mốc bắt đầu",
+      "form.hours": "Số giờ",
+      "form.end": "Kết thúc lúc",
+      "form.submit": "Thêm bộ đếm",
+      "edit.editing": "Đang sửa mốc",
+      "edit.cancel": "Bỏ sửa",
+      "edit.save": "Lưu thay đổi",
+      "edit.title": "Sửa mốc",
+      "del.title": "Xoá mốc",
+      "del.confirm": "Xoá mốc \"{name}\"?",
+      "chip.24": "+24 giờ từ bây giờ",
+      "chip.48": "+48 giờ",
+      "chip.72": "+72 giờ",
+      "chip.168": "+7 ngày",
+      "empty": "Chưa có bộ đếm nào. Thêm cái đầu tiên đi.",
+      "hint.tz": "Giờ và ngày tính theo thiết bị của bạn — mở bằng máy nào thì theo múi giờ máy đó.",
+      "tz.your": "Múi giờ của bạn",
+      "io.export": "Xuất dữ liệu",
+      "io.import": "Nhập dữ liệu",
+      "state.default": "Dữ liệu nằm trên máy này, không nằm trên mạng",
+      "state.saved": "Đã lưu trên trình duyệt này",
+      "state.sync": "Đã đồng bộ từ tab khác",
+      "state.corrupt": "Dữ liệu cũ bị hỏng, đã bỏ qua",
+      "state.fail": "Không lưu được (chế độ riêng tư hoặc hết dung lượng)",
+      "err.hours": "Số giờ phải lớn hơn 0.",
+      "err.hoursBig": "Số giờ quá lớn (tối đa 50 năm).",
+      "err.start": "Mốc bắt đầu không hợp lệ.",
+      "err.end": "Chọn thời điểm kết thúc.",
+      "err.json": "File JSON không hợp lệ.",
+      "err.read": "Không đọc được file.",
+      "ok.added": "Đã thêm. Mốc đã lưu.",
+      "ok.updated": "Đã cập nhật. Mốc đã lưu.",
+      "ok.chip": "Đã điền. Bấm Thêm bộ đếm.",
+      "ok.exported": "Đã xuất {n} mốc.",
+      "ok.imported": "Đã nhập {n} mốc.",
+      "ok.deleted": "Đã xoá.",
+      "meta.ends": "Kết thúc:",
+      "unit.days": "ngày",
+      "unit.hours": "giờ",
+      "unit.mins": "phút",
+      "unit.secs": "giây",
+      "note.left": "còn {v}",
+      "note.done": "đã xong {v} trước",
+      "default.name": "Bộ đếm",
+      "default.chipName": "+{h}h từ {time}"
+    },
+    en: {
+      "app.title": "Countdown Timer",
+      "app.sub": "Multiple timers at once · saved on your device",
+      "form.name": "Timer name",
+      "form.namePh": "e.g. 72h from 4:44 Nov 17",
+      "form.mode": "Mode",
+      "form.modeDuration": "Hours from a start time",
+      "form.modeEnd": "Specific end time",
+      "form.start": "Start time",
+      "form.hours": "Hours",
+      "form.end": "Ends at",
+      "form.submit": "Add timer",
+      "edit.editing": "Editing timer",
+      "edit.cancel": "Cancel edit",
+      "edit.save": "Save changes",
+      "edit.title": "Edit timer",
+      "del.title": "Delete timer",
+      "del.confirm": "Delete timer \"{name}\"?",
+      "chip.24": "+24 hours from now",
+      "chip.48": "+48 hours",
+      "chip.72": "+72 hours",
+      "chip.168": "+7 days",
+      "empty": "No timers yet. Add the first one.",
+      "hint.tz": "Times follow your device — open it on any machine and it uses that machine's time zone.",
+      "tz.your": "Your time zone",
+      "io.export": "Export data",
+      "io.import": "Import data",
+      "state.default": "Data lives on this device, not online",
+      "state.saved": "Saved in this browser",
+      "state.sync": "Synced from another tab",
+      "state.corrupt": "Old data was corrupt, skipped",
+      "state.fail": "Could not save (private mode or storage full)",
+      "err.hours": "Hours must be greater than 0.",
+      "err.hoursBig": "Too many hours (50 year max).",
+      "err.start": "Invalid start time.",
+      "err.end": "Pick an end time.",
+      "err.json": "Invalid JSON file.",
+      "err.read": "Could not read the file.",
+      "ok.added": "Added. Timer saved.",
+      "ok.updated": "Updated. Timer saved.",
+      "ok.chip": "Filled in. Hit Add timer.",
+      "ok.exported": "Exported {n} timers.",
+      "ok.imported": "Imported {n} timers.",
+      "ok.deleted": "Deleted.",
+      "meta.ends": "Ends:",
+      "unit.days": "days",
+      "unit.hours": "hours",
+      "unit.mins": "mins",
+      "unit.secs": "secs",
+      "note.left": "{v} left",
+      "note.done": "finished {v} ago",
+      "default.name": "Timer",
+      "default.chipName": "+{h}h from {time}"
+    }
+  };
+
+  var $ = function (sel, root) { return (root || document).querySelector(sel); };
+
+  var listEl = $("#list");
+  var emptyEl = $("#empty");
+  var errEl = $("#err");
+  var hoursEl = $("#hours");
+  var startEl = $("#start");
+  var endEl = $("#end");
+  var modeEl = $("#mode");
+  var nameEl = $("#name");
+  var formEl = $("#form");
+  var submitBtn = $("#btn-submit");
+  var editBanner = $("#edit-banner");
+  var saveStateEl = $("#save-state");
+  var clockTzEl = $("#clock-tz");
+  var lblStartEl = $("#lbl-start");
+  var lblEndEl = $("#lbl-end");
+
+  var refs = new Map();
+  var lang = "vi";
+  var editingId = null;
+  var timers = [];
+
+  /* ------------------------------ i18n ------------------------------ */
+
+  function t(key, vars) {
+    var pack = I18N[lang] || I18N.vi;
+    var s = pack[key];
+    if (s == null) s = I18N.vi[key];
+    if (s == null) s = key;
+    if (vars) {
+      Object.keys(vars).forEach(function (k) {
+        s = s.split("{" + k + "}").join(String(vars[k]));
+      });
+    }
+    return s;
+  }
+
+  function locale() { return lang === "vi" ? "vi-VN" : "en-US"; }
+
+  /* --------------------------- time helpers -------------------------- */
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function uid() {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    } catch (e) { /* insecure context */ }
+    return "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+
+  function toInputValue(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+      "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function fmtFull(ts) {
+    var d = new Date(ts);
+    return pad(d.getHours()) + ":" + pad(d.getMinutes()) +
+      " · " + pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear();
+  }
+
+  function fmtWeekday(ts) {
+    try {
+      return new Intl.DateTimeFormat(locale(), {
+        weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
+      }).format(new Date(ts));
+    } catch (e) {
+      return fmtFull(ts);
+    }
+  }
+
+  function tzZoneName() {
+    try {
+      var z = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (z) return z.replace(/_/g, " ");
+    } catch (e) { /* fall through */ }
+    return "UTC";
+  }
+
+  // Offset in effect at that exact instant, so DST dates label correctly.
+  function tzOffsetLabel(ts) {
+    var d = new Date(ts);
+    try {
+      var parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "shortOffset" }).formatToParts(d);
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].type === "timeZoneName") {
+          var v = parts[i].value.replace("UTC", "GMT");
+          if (/GMT|UTC|^\d/.test(v)) return v;
+        }
+      }
+    } catch (e) { /* fall through */ }
+
+    var mins = -d.getTimezoneOffset();
+    var sign = mins < 0 ? "-" : "+";
+    var abs = Math.abs(mins);
+    return "GMT" + sign + pad(Math.floor(abs / 60)) + ":" + pad(abs % 60);
+  }
+
+  function tzBadge(ts) { return tzZoneName() + " · " + tzOffsetLabel(ts); }
+
+  function human(ms) {
+    var s = Math.floor(ms / 1000);
+    var d = Math.floor(s / 86400);
+    var h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    if (lang === "vi") {
+      if (d > 0) return d + " " + t("unit.days") + " " + h + " " + t("unit.hours");
+      if (h > 0) return h + " " + t("unit.hours") + " " + m + " " + t("unit.mins");
+      if (m > 0) return m + " " + t("unit.mins");
+      return s + " " + t("unit.secs");
+    }
+    if (d > 0) return d + "d " + h + "h";
+    if (h > 0) return h + "h " + m + "m";
+    if (m > 0) return m + "m";
+    return s + "s";
+  }
+
+  /* ------------------------------ data ------------------------------ */
+
+  function normalize(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    var end = Number(raw.end);
+    if (!Number.isFinite(end)) return null;
+    var start = Number(raw.start);
+    if (!Number.isFinite(start) || start > end) start = end;
+    var name = String(raw.name == null ? "" : raw.name).trim().slice(0, 80);
+    var created = Number(raw.created);
+    return {
+      id: raw.id == null || raw.id === "" ? uid() : String(raw.id),
+      name: name || t("default.name"),
+      start: start,
+      end: end,
+      created: Number.isFinite(created) ? created : Date.now()
+    };
+  }
+
+  function normalizeList(arr) {
+    var out = [];
+    if (!Array.isArray(arr)) return out;
+    var seen = new Set();
+    for (var i = 0; i < arr.length; i++) {
+      var item = normalize(arr[i]);
+      if (!item) continue;
+      if (seen.has(item.id)) item.id = uid();
+      seen.add(item.id);
+      out.push(item);
+    }
+    out.sort(function (a, b) { return a.end - b.end || a.created - b.created; });
+    return out;
+  }
+
+  function readJSON(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeJSON(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function save() {
+    if (!writeJSON(KEY, timers)) {
+      setSaveState(t("state.fail"), true);
+      return;
+    }
+    setSaveState(t("state.saved"));
+  }
+
+  var stateTimer = 0;
+  function setSaveState(text, bad) {
+    saveStateEl.textContent = text;
+    saveStateEl.style.color = bad ? "var(--danger)" : "";
+    window.clearTimeout(stateTimer);
+    if (bad) return;
+    stateTimer = window.setTimeout(function () {
+      saveStateEl.textContent = t("state.default");
+      saveStateEl.style.color = "";
+    }, 2400);
+  }
+
+  function loadTimers() {
+    var list = [];
+
+    try {
+      var raw = window.localStorage.getItem(KEY);
+      if (raw) list = normalizeList(JSON.parse(raw));
+    } catch (e) {
+      setSaveState(t("state.corrupt"), true);
+    }
+
+    // One-time migration: pull anything left behind by the old admin-style build.
+    if (list.length === 0) {
+      var leftover = readJSON(LEGACY_DRAFT);
+      if (Array.isArray(leftover) && leftover.length) {
+        list = normalizeList(leftover);
+        writeJSON(KEY, list);
+      }
+      try { window.localStorage.removeItem(LEGACY_DRAFT); } catch (e) { /* ignore */ }
+    }
+
+    return list;
+  }
+
+  /* ----------------------------- rendering ---------------------------- */
+
+  function flash(msg, good) {
+    errEl.textContent = msg || "";
+    errEl.classList.toggle("ok", !!good);
+  }
+
+  function buildCard(item) {
+    var el = document.createElement("article");
+    el.className = "card";
+    el.dataset.id = item.id;
+    el.innerHTML =
+      '<div class="card-head">' +
+        '<h3></h3>' +
+        '<div class="card-actions">' +
+          '<button class="icon edit" type="button">✎</button>' +
+          '<button class="icon del" type="button">✕</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="meta"></p>' +
+      '<div class="digits">' +
+        '<div><b class="d">00</b><span class="u-d"></span></div>' +
+        '<div><b class="h">00</b><span class="u-h"></span></div>' +
+        '<div><b class="m">00</b><span class="u-m"></span></div>' +
+        '<div><b class="s">00</b><span class="u-s"></span></div>' +
+      '</div>' +
+      '<div class="bar"><i></i></div>' +
+      '<div class="foot"><span class="pct">0%</span><span class="note"></span></div>';
+
+    $("h3", el).textContent = item.name;
+    $(".meta", el).textContent = t("meta.ends") + " " + fmtFull(item.end) +
+      " (" + tzOffsetLabel(item.end) + ")";
+    $(".u-d", el).textContent = t("unit.days");
+    $(".u-h", el).textContent = t("unit.hours");
+    $(".u-m", el).textContent = t("unit.mins");
+    $(".u-s", el).textContent = t("unit.secs");
+
+    var editBtn = $(".icon.edit", el);
+    editBtn.title = t("edit.title");
+    editBtn.setAttribute("aria-label", t("edit.title"));
+    editBtn.addEventListener("click", function () { startEdit(item.id); });
+
+    var delBtn = $(".icon.del", el);
+    delBtn.title = t("del.title");
+    delBtn.setAttribute("aria-label", t("del.title"));
+    delBtn.addEventListener("click", function () { removeItem(item.id); });
+
+    refs.set(item.id, {
+      el: el,
+      d: $(".d", el), h: $(".h", el), m: $(".m", el), s: $(".s", el),
+      bar: $(".bar i", el), pct: $(".pct", el), note: $(".note", el)
+    });
+
+    return el;
+  }
+
+  function render() {
+    timers.sort(function (a, b) { return a.end - b.end || a.created - b.created; });
+
+    listEl.textContent = "";
+    refs.clear();
+
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < timers.length; i++) frag.appendChild(buildCard(timers[i]));
+    listEl.appendChild(frag);
+
+    emptyEl.hidden = timers.length > 0;
+    if (timers.length === 0) emptyEl.textContent = t("empty");
+
+    tick();
+  }
+
+  function tick() {
+    var now = Date.now();
+    $("#clock-time").textContent =
+      pad(new Date(now).getHours()) + ":" + pad(new Date(now).getMinutes()) + ":" + pad(new Date(now).getSeconds());
+    $("#clock-date").textContent = fmtWeekday(now);
+
+    clockTzEl.textContent = tzBadge(now);
+    clockTzEl.title = t("tz.your") + " — " + tzBadge(now);
+    lblStartEl.textContent = t("form.start") + " · " + tzOffsetLabel(now);
+    lblEndEl.textContent = t("form.end") + " · " + tzOffsetLabel(now);
+
+    var nextName = "";
+    var nextLeft = Infinity;
+
+    for (var i = 0; i < timers.length; i++) {
+      var item = timers[i];
+      var r = refs.get(item.id);
+      if (!r) continue;
+
+      var left = item.end - now;
+      var done = left <= 0;
+      var ms = Math.abs(left);
+
+      var sec = Math.floor(ms / 1000);
+      r.d.textContent = pad(Math.floor(sec / 86400));
+      r.h.textContent = pad(Math.floor((sec % 86400) / 3600));
+      r.m.textContent = pad(Math.floor((sec % 3600) / 60));
+      r.s.textContent = pad(sec % 60);
+
+      var span = Math.max(1, item.end - item.start);
+      var pct = Math.max(0, Math.min(100, ((now - item.start) / span) * 100));
+
+      if (done) {
+        r.el.classList.add("done");
+        r.el.classList.remove("soon");
+        r.bar.style.width = "100%";
+        r.pct.textContent = "100%";
+        r.note.textContent = t("note.done", { v: human(ms) });
+      } else {
+        r.el.classList.remove("done");
+        r.bar.style.width = pct.toFixed(2) + "%";
+        r.pct.textContent = Math.floor(pct) + "%";
+        r.note.textContent = t("note.left", { v: human(left) });
+        r.el.classList.toggle("soon", left <= 10 * 60 * 1000);
+        if (left < nextLeft) { nextLeft = left; nextName = item.name; }
+      }
+    }
+
+    document.title = nextName
+      ? pad(Math.floor(nextLeft / 3600000)) + ":" +
+        pad(Math.floor((nextLeft % 3600000) / 60000)) + ":" +
+        pad(Math.floor((nextLeft % 60000) / 1000)) + " · " + nextName
+      : t("app.title");
+  }
+
+  /* ------------------------------ actions ----------------------------- */
+
+  function startEdit(id) {
+    var item = null;
+    for (var i = 0; i < timers.length; i++) if (timers[i].id === id) item = timers[i];
+    if (!item) return;
+
+    editingId = id;
+    nameEl.value = item.name;
+    modeEl.value = "end";
+    syncMode();
+    endEl.value = toInputValue(item.end);
+    startEl.value = toInputValue(item.start);
+
+    editBanner.hidden = false;
+    submitBtn.textContent = t("edit.save");
+    nameEl.focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    editBanner.hidden = true;
+    submitBtn.textContent = t("form.submit");
+    nameEl.value = "";
+    modeEl.value = "duration";
+    syncMode();
+    startEl.value = toInputValue(Date.now());
+    hoursEl.value = 72;
+    flash("");
+  }
+
+  function removeItem(id) {
+    var item = null;
+    for (var i = 0; i < timers.length; i++) if (timers[i].id === id) item = timers[i];
+    if (!item) return;
+    if (!window.confirm(t("del.confirm", { name: item.name }))) return;
+
+    timers = timers.filter(function (x) { return x.id !== id; });
+    if (editingId === id) cancelEdit();
+    save();
+    render();
+    flash(t("ok.deleted"), true);
+  }
+
+  function syncMode() {
+    var isDuration = modeEl.value === "duration";
+    $("#field-start").hidden = !isDuration;
+    $("#field-hours").hidden = !isDuration;
+    $("#field-end").hidden = isDuration;
+  }
+
+  modeEl.addEventListener("change", syncMode);
+  $("#btn-cancel-edit").addEventListener("click", cancelEdit);
+
+  $("#chips").addEventListener("click", function (ev) {
+    var btn = ev.target.closest("[data-hours]");
+    if (!btn) return;
+    modeEl.value = "duration";
+    syncMode();
+    var now = Date.now();
+    if (!nameEl.value.trim()) {
+      nameEl.value = t("default.chipName", { h: btn.dataset.hours, time: fmtFull(now) });
+    }
+    startEl.value = toInputValue(now);
+    hoursEl.value = btn.dataset.hours;
+    flash(t("ok.chip"), true);
+  });
+
+  formEl.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    flash("");
+
+    var name = nameEl.value.trim() || t("default.name");
+    var start, end;
+
+    if (modeEl.value === "duration") {
+      var hours = parseFloat(hoursEl.value);
+      if (!Number.isFinite(hours) || hours <= 0) { flash(t("err.hours")); return; }
+      if (hours > 24 * 365 * 50) { flash(t("err.hoursBig")); return; }
+      var s = startEl.value ? new Date(startEl.value).getTime() : Date.now();
+      if (!Number.isFinite(s)) { flash(t("err.start")); return; }
+      start = s;
+      end = s + hours * 3600000;
+    } else {
+      var e = endEl.value ? new Date(endEl.value).getTime() : NaN;
+      if (!Number.isFinite(e)) { flash(t("err.end")); return; }
+      end = e;
+      start = Date.now();
+    }
+
+    if (editingId) {
+      for (var i = 0; i < timers.length; i++) {
+        if (timers[i].id === editingId) {
+          timers[i].name = name.slice(0, 80);
+          timers[i].start = Math.min(start, end);
+          timers[i].end = end;
+          break;
+        }
+      }
+      editingId = null;
+      editBanner.hidden = true;
+      submitBtn.textContent = t("form.submit");
+      save();
+      render();
+      flash(t("ok.updated"), true);
+    } else {
+      timers.push({
+        id: uid(),
+        name: name.slice(0, 80),
+        start: Math.min(start, end),
+        end: end,
+        created: Date.now()
+      });
+      save();
+      render();
+      flash(t("ok.added"), true);
+    }
+
+    nameEl.value = "";
+    startEl.value = toInputValue(Date.now());
+  });
+
+  $("#btn-export").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(timers, null, 2) + "\n"], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "dem-nguoc-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    flash(t("ok.exported", { n: timers.length }), true);
+  });
+
+  $("#file-import").addEventListener("change", function (ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var added = 0;
+      try {
+        var data = JSON.parse(String(reader.result));
+        if (!Array.isArray(data)) throw new Error("not an array");
+        var known = new Set(timers.map(function (x) { return x.id; }));
+        var incoming = normalizeList(data);
+        for (var i = 0; i < incoming.length; i++) {
+          var item = incoming[i];
+          if (known.has(item.id)) item.id = uid();
+          known.add(item.id);
+          timers.push(item);
+          added++;
+        }
+      } catch (e) {
+        flash(t("err.json"));
+        ev.target.value = "";
+        return;
+      }
+      save();
+      render();
+      flash(t("ok.imported", { n: added }), true);
+      ev.target.value = "";
+    };
+    reader.onerror = function () {
+      flash(t("err.read"));
+      ev.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  /* ------------------------------ language ---------------------------- */
+
+  function detectLang() {
+    try {
+      var saved = window.localStorage.getItem(LANG_KEY);
+      if (saved === "vi" || saved === "en") return saved;
+    } catch (e) { /* ignore */ }
+    var nav = (navigator.language || "vi").toLowerCase();
+    return nav.indexOf("vi") === 0 ? "vi" : "en";
+  }
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.title = t("app.title");
+
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+    });
+    document.querySelectorAll(".lang button").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-lang") === lang);
+      b.setAttribute("aria-pressed", b.getAttribute("data-lang") === lang ? "true" : "false");
+    });
+
+    if (!editingId) submitBtn.textContent = t("form.submit");
+    saveStateEl.style.color = "";
+    saveStateEl.textContent = t("state.default");
+
+    render();
+  }
+
+  document.querySelectorAll(".lang button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var next = b.getAttribute("data-lang");
+      if (next === lang) return;
+      lang = next;
+      try { window.localStorage.setItem(LANG_KEY, lang); } catch (e) { /* ignore */ }
+      flash("");
+      applyLang();
+    });
+  });
+
+  /* -------------------------------- boot ------------------------------ */
+
+  window.addEventListener("storage", function (ev) {
+    if (ev.key === KEY) {
+      timers = loadTimers();
+      render();
+      setSaveState(t("state.sync"));
+      return;
+    }
+    if (ev.key === LANG_KEY) {
+      var saved = ev.newValue;
+      if ((saved === "vi" || saved === "en") && saved !== lang) {
+        lang = saved;
+        applyLang();
+      }
+    }
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) tick();
+  });
+
+  lang = detectLang();
+  timers = loadTimers();
+
+  startEl.value = toInputValue(Date.now());
+  endEl.value = toInputValue(Date.now() + 72 * 3600000);
+  syncMode();
+
+  applyLang();
+  window.setInterval(tick, TICK_MS);
+})();
+</script>
+</body>
+</html>
